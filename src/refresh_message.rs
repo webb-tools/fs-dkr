@@ -18,7 +18,9 @@ use paillier::{
 };
 use serde::{Deserialize, Serialize};
 use std::borrow::Borrow;
+use std::collections::HashMap;
 use std::fmt::Debug;
+use std::iter::FromIterator;
 use zeroize::Zeroize;
 use zk_paillier::zkproofs::{DLogStatement, NiCorrectKeyProof, SALT_STRING};
 
@@ -44,6 +46,7 @@ impl<E: Curve, H: Digest + Clone> RefreshMessage<E, H> {
     pub fn distribute(
         local_key: &LocalKey<E>,
         new_n: u16,
+        new_to_old_map: &HashMap<u16, u16>,
     ) -> FsDkrResult<(RefreshMessage<E, H>, DecryptionKey)> {
         assert!(local_key.t <= new_n / 2);
         let secret = local_key.keys_linear.x_i.clone();
@@ -51,19 +54,30 @@ impl<E: Curve, H: Digest + Clone> RefreshMessage<E, H> {
         if new_n <= local_key.t {
             return Err(FsDkrError::NewPartyUnassignedIndexError);
         }
-        println!("new n {:?}", new_n);
         let (vss_scheme, secret_shares) = VerifiableSS::<E>::share(local_key.t, new_n, &secret);
         // commit to points on the polynomial
         let points_committed_vec: Vec<_> = (0..secret_shares.len())
             .map(|i| Point::<E>::generator() * &secret_shares[i].clone().into())
             .collect();
 
+        let new_to_old_values_indexed_at_zero: HashMap<u16, u16> = HashMap::from_iter(
+            new_to_old_map
+                .values()
+                .enumerate()
+                .map(|(i, v)| (i as u16, *v)),
+        );
+        println!(
+            "new_to_old_values_indexed_at_zero: {:?}",
+            new_to_old_values_indexed_at_zero
+        );
         // encrypt points on the polynomial using Paillier keys
         let (points_encrypted_vec, randomness_vec): (Vec<_>, Vec<_>) = (0..secret_shares.len())
+            // encrypt new secret shares with new parties who were also present as old participants
             .map(|i| {
+                let old_index = new_to_old_values_indexed_at_zero.get(&(i as u16)).unwrap();
                 let randomness = BigInt::sample_below(&local_key.paillier_key_vec[i].n);
                 let ciphertext = Paillier::encrypt_with_chosen_randomness(
-                    &local_key.paillier_key_vec[i],
+                    &local_key.paillier_key_vec[(old_index - 1) as usize],
                     RawPlaintext::from(secret_shares[i].to_bigint()),
                     &Randomness::from(randomness.clone()),
                 )
@@ -136,7 +150,7 @@ impl<E: Curve, H: Digest + Clone> RefreshMessage<E, H> {
                 refreshed_keys: refresh_messages.len(),
             });
         }
-        
+
         // check all vectors are of same length
         let reference_len = refresh_messages[0].pdl_proof_vec.len();
 
@@ -159,8 +173,6 @@ impl<E: Curve, H: Digest + Clone> RefreshMessage<E, H> {
                 });
             }
         }
-
-        
 
         for refresh_message in refresh_messages.iter() {
             for i in 0..n as usize {
@@ -232,6 +244,7 @@ impl<E: Curve, H: Digest + Clone> RefreshMessage<E, H> {
         new_parties: &[JoinMessage],
         key: &mut LocalKey<E>,
         new_n: u16,
+        new_to_old_map: &HashMap<u16, u16>,
     ) -> FsDkrResult<(Self, DecryptionKey)> {
         let current_len = key.paillier_key_vec.len() as u16;
         for join_message in new_parties.iter() {
@@ -255,7 +268,7 @@ impl<E: Curve, H: Digest + Clone> RefreshMessage<E, H> {
             }
         }
 
-        RefreshMessage::distribute(key, new_n as u16)
+        RefreshMessage::distribute(key, new_n as u16, new_to_old_map)
     }
 
     pub fn collect(

@@ -23,6 +23,7 @@ mod tests {
     use paillier::DecryptionKey;
     use round_based::dev::Simulation;
     use std::collections::HashMap;
+    use std::hash::Hash;
 
     type GE = Secp256k1Point;
 
@@ -90,6 +91,7 @@ mod tests {
         fn simulate_replace(
             keys: &mut Vec<LocalKey<Secp256k1>>,
             party_indices: &[u16],
+            new_to_old_map: HashMap<u16, u16>,
             t: u16,
             n: u16,
         ) -> FsDkrResult<()> {
@@ -105,11 +107,18 @@ mod tests {
             fn generate_refresh_parties_replace(
                 keys: &mut [LocalKey<Secp256k1>],
                 join_messages: &[JoinMessage],
+                new_to_old_map: HashMap<u16, u16>,
             ) -> (Vec<RefreshMessage<Secp256k1, Sha256>>, Vec<DecryptionKey>) {
-                let new_n = keys.len() as u16;
+                let new_n = (keys.len() + join_messages.len()) as u16;
                 keys.iter_mut()
                     .map(|key| {
-                        RefreshMessage::replace(join_messages, &mut key.clone(), new_n).unwrap()
+                        RefreshMessage::replace(
+                            join_messages,
+                            &mut key.clone(),
+                            new_n,
+                            &new_to_old_map,
+                        )
+                        .unwrap()
                     })
                     .unzip()
             }
@@ -126,7 +135,7 @@ mod tests {
 
             // each existing party has to generate it's refresh message aware of the new parties
             let (refresh_messages, dk_keys) =
-                generate_refresh_parties_replace(keys, join_messages.as_slice());
+                generate_refresh_parties_replace(keys, join_messages.as_slice(), new_to_old_map);
             println!("Length of Refresh Messages {:?}", keys.len());
             // all existing parties rotate aware of the join_messages
             for i in 0..keys.len() as usize {
@@ -166,7 +175,11 @@ mod tests {
         keys.remove(1);
 
         // Simulate the replace
-        simulate_replace(&mut keys, &[2, 7], t, n).unwrap();
+        let mut new_to_old_map: HashMap<u16, u16> = HashMap::new();
+        keys.iter().for_each(|k| {
+            new_to_old_map.insert(k.i, k.i);
+        });
+        simulate_replace(&mut keys, &[2, 7], new_to_old_map, t, n).unwrap();
 
         let offline_sign = simulate_offline_stage(keys, &[1, 2, 7]);
         simulate_signing(offline_sign, b"ZenGo");
@@ -191,9 +204,16 @@ mod tests {
         let mut refresh_messages: Vec<RefreshMessage<Secp256k1, Sha256>> = Vec::new();
         let mut party_key: HashMap<usize, LocalKey<Secp256k1>> = HashMap::new();
         // TODO: Verify this is correct
-        let new_n = keys.len() as u16;
+        let new_n = (keys.len() - remove_party_indices.len()) as u16;
+        let mut new_to_old_map: HashMap<u16, u16> = HashMap::new();
+        keys.iter()
+            .filter(|k| remove_party_indices.contains(&k.i))
+            .for_each(|k| {
+                new_to_old_map.insert(k.i, k.i);
+            });
         for key in keys.iter_mut() {
-            let (refresh_message, new_dk) = RefreshMessage::distribute(key, new_n).unwrap();
+            let (refresh_message, new_dk) =
+                RefreshMessage::distribute(key, new_n, &new_to_old_map).unwrap();
             refresh_messages.push(refresh_message.clone());
             new_dks.insert(refresh_message.party_index.into(), new_dk);
             party_key.insert(refresh_message.party_index.into(), key.clone());
@@ -260,9 +280,13 @@ mod tests {
         let mut broadcast_vec: Vec<RefreshMessage<Secp256k1, Sha256>> = Vec::new();
         let mut new_dks: Vec<DecryptionKey> = Vec::new();
 
+        let mut new_to_old_map: HashMap<u16, u16> = HashMap::new();
+        keys.iter().for_each(|k| {
+            new_to_old_map.insert(k.i, k.i);
+        });
         for key in keys.iter() {
             let (refresh_message, new_dk) =
-                RefreshMessage::distribute(key, keys.len() as u16).unwrap();
+                RefreshMessage::distribute(key, keys.len() as u16, &new_to_old_map).unwrap();
             broadcast_vec.push(refresh_message);
             new_dks.push(new_dk);
         }
