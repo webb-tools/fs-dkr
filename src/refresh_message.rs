@@ -60,22 +60,16 @@ impl<E: Curve, H: Digest + Clone> RefreshMessage<E, H> {
             .map(|i| Point::<E>::generator() * &secret_shares[i].clone().into())
             .collect();
 
-        let new_to_old_values_indexed_at_zero: HashMap<u16, u16> = HashMap::from_iter(
-            new_to_old_map
-                .values()
-                .enumerate()
-                .map(|(i, v)| (i as u16, *v)),
-        );
         println!(
             "new_to_old_values_indexed_at_zero: {:?}",
-            new_to_old_values_indexed_at_zero
+            new_to_old_map
         );
         // encrypt points on the polynomial using Paillier keys
-        let (points_encrypted_vec, randomness_vec): (Vec<_>, Vec<_>) = (0..secret_shares.len())
+        let (points_encrypted_vec, randomness_vec): (Vec<_>, Vec<_>) = (0..new_to_old_map.values().len())
             // encrypt new secret shares with new parties who were also present as old participants
             .map(|i| {
-                let old_index = new_to_old_values_indexed_at_zero.get(&(i as u16)).unwrap();
-                let randomness = BigInt::sample_below(&local_key.paillier_key_vec[i].n);
+                let old_index = new_to_old_map.get(&(i as u16)).unwrap();
+                let randomness = BigInt::sample_below(&local_key.paillier_key_vec[(old_index - 1) as usize].n);
                 let ciphertext = Paillier::encrypt_with_chosen_randomness(
                     &local_key.paillier_key_vec[(old_index - 1) as usize],
                     RawPlaintext::from(secret_shares[i].to_bigint()),
@@ -88,32 +82,34 @@ impl<E: Curve, H: Digest + Clone> RefreshMessage<E, H> {
             .unzip();
 
         // generate PDL proofs for each {point_committed, point_encrypted} pair
-        let pdl_proof_vec: Vec<_> = (0..secret_shares.len())
+        let pdl_proof_vec: Vec<_> = (0..new_to_old_map.values().len())
             .map(|i| {
+                let old_index = new_to_old_map.get(&(i as u16)).unwrap();
                 let witness = PDLwSlackWitness {
                     x: secret_shares[i].clone(),
                     r: randomness_vec[i].clone(),
                 };
                 let statement = PDLwSlackStatement {
                     ciphertext: points_encrypted_vec[i].clone(),
-                    ek: local_key.paillier_key_vec[i].clone(),
+                    ek: local_key.paillier_key_vec[(old_index - 1) as usize].clone(),
                     Q: points_committed_vec[i].clone(),
                     G: Point::<E>::generator().to_point(),
-                    h1: local_key.h1_h2_n_tilde_vec[i].g.clone(),
-                    h2: local_key.h1_h2_n_tilde_vec[i].ni.clone(),
-                    N_tilde: local_key.h1_h2_n_tilde_vec[i].N.clone(),
+                    h1: local_key.h1_h2_n_tilde_vec[(old_index - 1) as usize].g.clone(),
+                    h2: local_key.h1_h2_n_tilde_vec[(old_index - 1) as usize].ni.clone(),
+                    N_tilde: local_key.h1_h2_n_tilde_vec[(old_index-1) as usize].N.clone(),
                 };
                 PDLwSlackProof::prove(&witness, &statement)
             })
             .collect();
 
-        let range_proofs = (0..secret_shares.len())
+        let range_proofs = (0..new_to_old_map.values().len())
             .map(|i| {
+                let old_index = new_to_old_map.get(&(i as u16)).unwrap();
                 AliceProof::generate(
                     &secret_shares[i].to_bigint(),
                     &points_encrypted_vec[i],
-                    &local_key.paillier_key_vec[i],
-                    &local_key.h1_h2_n_tilde_vec[i],
+                    &local_key.paillier_key_vec[(old_index - 1) as usize],
+                    &local_key.h1_h2_n_tilde_vec[(old_index - 1) as usize],
                     &randomness_vec[i],
                 )
             })

@@ -175,10 +175,18 @@ mod tests {
         keys.remove(1);
 
         // Simulate the replace
-        let mut new_to_old_map: HashMap<u16, u16> = HashMap::new();
-        keys.iter().for_each(|k| {
-            new_to_old_map.insert(k.i, k.i);
-        });
+        // let mut new_to_old_map: HashMap<u16, u16> = HashMap::new();
+        // keys.iter().for_each(|k| {
+        //     new_to_old_map.insert(k.i, k.i);
+        // });
+
+        let mut new_to_old_map = HashMap::new();
+        new_to_old_map.insert(0, 1);
+        new_to_old_map.insert(1, 3);
+        new_to_old_map.insert(2, 4);
+        new_to_old_map.insert(3, 5);
+        new_to_old_map.insert(4, 6);
+
         simulate_replace(&mut keys, &[2, 7], new_to_old_map, t, n).unwrap();
 
         let offline_sign = simulate_offline_stage(keys, &[1, 2, 7]);
