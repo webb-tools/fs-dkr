@@ -127,7 +127,7 @@ mod tests {
             // each existing party has to generate it's refresh message aware of the new parties
             let (refresh_messages, dk_keys) =
                 generate_refresh_parties_replace(keys, join_messages.as_slice());
-
+            println!("Length of Refresh Messages {:?}", keys.len());
             // all existing parties rotate aware of the join_messages
             for i in 0..keys.len() as usize {
                 RefreshMessage::collect(

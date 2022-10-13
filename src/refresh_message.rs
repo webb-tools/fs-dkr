@@ -51,8 +51,8 @@ impl<E: Curve, H: Digest + Clone> RefreshMessage<E, H> {
         if new_n <= local_key.t {
             return Err(FsDkrError::NewPartyUnassignedIndexError);
         }
+        println!("new n {:?}", new_n);
         let (vss_scheme, secret_shares) = VerifiableSS::<E>::share(local_key.t, new_n, &secret);
-
         // commit to points on the polynomial
         let points_committed_vec: Vec<_> = (0..secret_shares.len())
             .map(|i| Point::<E>::generator() * &secret_shares[i].clone().into())
@@ -129,15 +129,18 @@ impl<E: Curve, H: Digest + Clone> RefreshMessage<E, H> {
 
     pub fn validate_collect(refresh_messages: &[Self], t: u16, n: u16) -> FsDkrResult<()> {
         // check we got at least threshold t refresh messages
+        println!("n is {:?}", n);
         if refresh_messages.len() <= t.into() {
             return Err(FsDkrError::PartiesThresholdViolation {
                 threshold: t,
                 refreshed_keys: refresh_messages.len(),
             });
         }
-
+        
         // check all vectors are of same length
         let reference_len = refresh_messages[0].pdl_proof_vec.len();
+
+        println!("hi1");
 
         for (k, refresh_message) in refresh_messages.iter().enumerate() {
             let pdl_proof_len = refresh_message.pdl_proof_vec.len();
@@ -157,6 +160,8 @@ impl<E: Curve, H: Digest + Clone> RefreshMessage<E, H> {
             }
         }
 
+        
+
         for refresh_message in refresh_messages.iter() {
             for i in 0..n as usize {
                 //TODO: we should handle the case of t<i<n
@@ -169,6 +174,8 @@ impl<E: Curve, H: Digest + Clone> RefreshMessage<E, H> {
                 }
             }
         }
+
+        println!("hi3");
 
         Ok(())
     }
@@ -257,11 +264,10 @@ impl<E: Curve, H: Digest + Clone> RefreshMessage<E, H> {
         new_dk: DecryptionKey,
         join_messages: &[JoinMessage],
     ) -> FsDkrResult<()> {
-        let new_n = refresh_messages.len() + join_messages.len();
+        let new_n = refresh_messages.len();
         RefreshMessage::validate_collect(refresh_messages, local_key.t, new_n as u16)?;
-
         for refresh_message in refresh_messages.iter() {
-            for i in 0..(local_key.n as usize) {
+            for i in 0..(new_n as usize) {
                 let statement = PDLwSlackStatement {
                     ciphertext: refresh_message.points_encrypted_vec[i].clone(),
                     ek: local_key.paillier_key_vec[i].clone(),
@@ -271,7 +277,9 @@ impl<E: Curve, H: Digest + Clone> RefreshMessage<E, H> {
                     h2: local_key.h1_h2_n_tilde_vec[i].ni.clone(),
                     N_tilde: local_key.h1_h2_n_tilde_vec[i].N.clone(),
                 };
+                println!("yo");
                 refresh_message.pdl_proof_vec[i].verify(&statement)?;
+                println!("yo2");
                 if !refresh_message.range_proofs[i].verify(
                     &statement.ciphertext,
                     &statement.ek,
