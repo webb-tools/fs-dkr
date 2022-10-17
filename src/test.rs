@@ -108,9 +108,7 @@ mod tests {
             ) -> (Vec<RefreshMessage<Secp256k1, Sha256>>, Vec<DecryptionKey>) {
                 let new_n = (&keys.len() + join_messages.len()) as u16;
                 keys.iter_mut()
-                    .map(|key| {
-                        RefreshMessage::replace(join_messages, key, new_n).unwrap()
-                    })
+                    .map(|key| RefreshMessage::replace(join_messages, key, new_n).unwrap())
                     .unzip()
             }
 
