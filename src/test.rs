@@ -86,7 +86,7 @@ mod tests {
     }
 
     #[test]
-    fn test_add_party() {
+    fn test_add_party_with_permute() {
         fn simulate_replace(
             keys: &mut Vec<LocalKey<Secp256k1>>,
             party_indices: &[u16],
@@ -167,11 +167,11 @@ mod tests {
         keys.remove(1);
 
         let mut new_to_old_map: HashMap<u16, u16> = HashMap::new();
-        new_to_old_map.insert(1, 1);
-        new_to_old_map.insert(3, 3);
-        new_to_old_map.insert(4, 4);
-        new_to_old_map.insert(5, 5);
-        new_to_old_map.insert(6, 6);
+        new_to_old_map.insert(1, 3);
+        new_to_old_map.insert(3, 4);
+        new_to_old_map.insert(4, 1);
+        new_to_old_map.insert(5, 6);
+        new_to_old_map.insert(6, 5);
 
         // Simulate the replace
         simulate_replace(&mut keys, &[2, 7], &new_to_old_map, t, n).unwrap();
