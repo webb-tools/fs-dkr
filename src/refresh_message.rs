@@ -226,6 +226,7 @@ impl<E: Curve, H: Digest + Clone> RefreshMessage<E, H> {
         new_parties: &[JoinMessage],
         key: &mut LocalKey<E>,
         new_to_old_map: &HashMap<u16, u16>,
+        old_to_new_map: &HashMap<u16, u16>,
         new_n: u16,
     ) -> FsDkrResult<(Self, DecryptionKey)> {
         let current_len = key.paillier_key_vec.len() as u16;
@@ -252,12 +253,10 @@ impl<E: Curve, H: Digest + Clone> RefreshMessage<E, H> {
 
         for new_party_index in new_to_old_map.keys() {
             if new_party_index.clone() <= current_len {
-                let paillier_key = key.paillier_key_vec.remove((new_party_index - 1) as usize);
-                key.paillier_key_vec
-                    .insert((new_party_index - 1) as usize, paillier_key);
-                let h1_h2_n_tilde = key.h1_h2_n_tilde_vec.remove((new_party_index - 1) as usize);
-                key.h1_h2_n_tilde_vec
-                    .insert((new_party_index - 1) as usize, h1_h2_n_tilde);
+                let paillier_key = key.paillier_key_vec.get((*new_to_old_map.get(&(new_party_index)).unwrap() - 1) as usize).unwrap().clone();
+                key.paillier_key_vec[(new_party_index - 1) as usize] =  paillier_key;
+                let h1_h2_n_tilde = key.h1_h2_n_tilde_vec.get((*new_to_old_map.get(&(new_party_index)).unwrap() - 1) as usize).unwrap().clone();
+                key.h1_h2_n_tilde_vec[(new_party_index - 1) as usize] =  h1_h2_n_tilde;
             } else {
                 key.paillier_key_vec.insert(
                     (new_party_index - 1) as usize,
@@ -275,6 +274,8 @@ impl<E: Curve, H: Digest + Clone> RefreshMessage<E, H> {
                 );
             }
         }
+        
+        key.i = *old_to_new_map.get(&key.i).unwrap();
 
         RefreshMessage::distribute(key, new_n as u16)
     }
