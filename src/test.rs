@@ -176,28 +176,6 @@ mod tests {
         // Simulate the replace
         simulate_replace(&mut keys, &[2, 7], &old_to_new_map, t, n).unwrap();
 
-        // check that sum of old keys is equal to sum of new keys
-        let old_linear_secret_key: Vec<_> = (0..all_keys.len())
-            .map(|i| all_keys[i].keys_linear.x_i.clone())
-            .collect();
-
-        let new_linear_secret_key: Vec<_> = (0..keys.len())
-            .map(|i| keys[i].keys_linear.x_i.clone())
-            .collect();
-        let indices: Vec<_> = (0..(t + 1) as u16).collect();
-        let vss = VerifiableSS::<Secp256k1> {
-            parameters: ShamirSecretSharing {
-                threshold: t,
-                share_count: n,
-            },
-            commitments: Vec::new(),
-        };
-        assert_eq!(
-            vss.reconstruct(&indices[..], &old_linear_secret_key[0..(t + 1) as usize]),
-            vss.reconstruct(&indices[..], &new_linear_secret_key[0..(t + 1) as usize])
-        );
-        assert_ne!(old_linear_secret_key, new_linear_secret_key);
-
         let offline_sign = simulate_offline_stage(keys, &[1, 2, 7]);
         simulate_signing(offline_sign, b"ZenGo");
     }
