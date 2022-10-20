@@ -225,26 +225,27 @@ impl<E: Curve, H: Digest + Clone> RefreshMessage<E, H> {
     pub fn replace(
         new_parties: &[JoinMessage],
         key: &mut LocalKey<E>,
-        new_to_old_map: &HashMap<u16, u16>,
         old_to_new_map: &HashMap<u16, u16>,
         new_n: u16,
     ) -> FsDkrResult<(Self, DecryptionKey)> {
         let current_len = key.paillier_key_vec.len() as u16;
         let mut paillier_key_h1_h2_n_tilde_hash_map: HashMap<u16, (EncryptionKey, DLogStatement)> =
             HashMap::new();
-        for new_party_index in new_to_old_map.keys() {
+        for old_party_index in old_to_new_map.keys() {
             let paillier_key = key
                 .paillier_key_vec
-                .get((*new_to_old_map.get(&(new_party_index)).unwrap() - 1) as usize)
+                .get((old_party_index - 1) as usize)
                 .unwrap()
                 .clone();
             let h1_h2_n_tilde = key
                 .h1_h2_n_tilde_vec
-                .get((*new_to_old_map.get(&(new_party_index)).unwrap() - 1) as usize)
+                .get((old_party_index - 1) as usize)
                 .unwrap()
                 .clone();
-            paillier_key_h1_h2_n_tilde_hash_map
-                .insert(new_party_index.clone(), (paillier_key, h1_h2_n_tilde));
+            paillier_key_h1_h2_n_tilde_hash_map.insert(
+                old_to_new_map.get(old_party_index).unwrap().clone(),
+                (paillier_key, h1_h2_n_tilde),
+            );
         }
 
         for new_party_index in paillier_key_h1_h2_n_tilde_hash_map.keys() {
@@ -296,7 +297,7 @@ impl<E: Curve, H: Digest + Clone> RefreshMessage<E, H> {
                 );
             }
         }
-        
+
         key.i = *old_to_new_map.get(&key.i).unwrap();
 
         RefreshMessage::distribute(key, new_n as u16)
