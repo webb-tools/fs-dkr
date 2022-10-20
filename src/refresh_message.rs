@@ -230,47 +230,69 @@ impl<E: Curve, H: Digest + Clone> RefreshMessage<E, H> {
         new_n: u16,
     ) -> FsDkrResult<(Self, DecryptionKey)> {
         let current_len = key.paillier_key_vec.len() as u16;
-        for join_message in new_parties.iter() {
-            let party_index = join_message.get_party_index()?;
-            if party_index <= current_len {
-                key.paillier_key_vec.remove((party_index - 1) as usize);
-                key.paillier_key_vec
-                    .insert((party_index - 1) as usize, join_message.ek.clone());
-                key.h1_h2_n_tilde_vec.remove((party_index - 1) as usize);
-                key.h1_h2_n_tilde_vec.insert(
-                    (party_index - 1) as usize,
-                    join_message.dlog_statement.clone(),
-                );
+        let mut paillier_key_h1_h2_n_tilde_hash_map: HashMap<u16, (EncryptionKey, DLogStatement)> =
+            HashMap::new();
+        for new_party_index in new_to_old_map.keys() {
+            let paillier_key = key
+                .paillier_key_vec
+                .get((*new_to_old_map.get(&(new_party_index)).unwrap() - 1) as usize)
+                .unwrap()
+                .clone();
+            let h1_h2_n_tilde = key
+                .h1_h2_n_tilde_vec
+                .get((*new_to_old_map.get(&(new_party_index)).unwrap() - 1) as usize)
+                .unwrap()
+                .clone();
+            paillier_key_h1_h2_n_tilde_hash_map
+                .insert(new_party_index.clone(), (paillier_key, h1_h2_n_tilde));
+        }
+
+        for new_party_index in paillier_key_h1_h2_n_tilde_hash_map.keys() {
+            if new_party_index.clone() <= current_len {
+                key.paillier_key_vec[(new_party_index - 1) as usize] =
+                    paillier_key_h1_h2_n_tilde_hash_map
+                        .get(new_party_index)
+                        .unwrap()
+                        .clone()
+                        .0;
+                key.h1_h2_n_tilde_vec[(new_party_index - 1) as usize] =
+                    paillier_key_h1_h2_n_tilde_hash_map
+                        .get(new_party_index)
+                        .unwrap()
+                        .clone()
+                        .1;
             } else {
-                key.paillier_key_vec
-                    .insert((party_index - 1) as usize, join_message.ek.clone());
+                key.paillier_key_vec.insert(
+                    (new_party_index - 1) as usize,
+                    paillier_key_h1_h2_n_tilde_hash_map
+                        .get(new_party_index)
+                        .unwrap()
+                        .clone()
+                        .0,
+                );
                 key.h1_h2_n_tilde_vec.insert(
-                    (party_index - 1) as usize,
-                    join_message.dlog_statement.clone(),
+                    (new_party_index - 1) as usize,
+                    paillier_key_h1_h2_n_tilde_hash_map
+                        .get(new_party_index)
+                        .unwrap()
+                        .clone()
+                        .1,
                 );
             }
         }
 
-        for new_party_index in new_to_old_map.keys() {
-            if new_party_index.clone() <= current_len {
-                let paillier_key = key.paillier_key_vec.get((*new_to_old_map.get(&(new_party_index)).unwrap() - 1) as usize).unwrap().clone();
-                key.paillier_key_vec[(new_party_index - 1) as usize] =  paillier_key;
-                let h1_h2_n_tilde = key.h1_h2_n_tilde_vec.get((*new_to_old_map.get(&(new_party_index)).unwrap() - 1) as usize).unwrap().clone();
-                key.h1_h2_n_tilde_vec[(new_party_index - 1) as usize] =  h1_h2_n_tilde;
+        for join_message in new_parties.iter() {
+            let party_index = join_message.get_party_index()?;
+            if party_index <= current_len {
+                key.paillier_key_vec[(party_index - 1) as usize] = join_message.ek.clone();
+                key.h1_h2_n_tilde_vec[(party_index - 1) as usize] =
+                    join_message.dlog_statement.clone();
             } else {
-                key.paillier_key_vec.insert(
-                    (new_party_index - 1) as usize,
-                    key.paillier_key_vec
-                        .get((new_to_old_map.get(new_party_index).unwrap() - 1) as usize)
-                        .unwrap()
-                        .clone(),
-                );
+                key.paillier_key_vec
+                    .insert((party_index - 1) as usize, join_message.ek.clone());
                 key.h1_h2_n_tilde_vec.insert(
-                    (new_party_index - 1) as usize,
-                    key.h1_h2_n_tilde_vec
-                        .get((new_to_old_map.get(new_party_index).unwrap() - 1) as usize)
-                        .unwrap()
-                        .clone(),
+                    (party_index - 1) as usize,
+                    join_message.dlog_statement.clone(),
                 );
             }
         }

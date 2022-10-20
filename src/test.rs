@@ -113,7 +113,14 @@ mod tests {
                 let new_n = (&keys.len() + join_messages.len()) as u16;
                 keys.iter_mut()
                     .map(|key| {
-                        RefreshMessage::replace(join_messages, key, new_to_old_map, old_to_new_map, new_n).unwrap()
+                        RefreshMessage::replace(
+                            join_messages,
+                            key,
+                            new_to_old_map,
+                            old_to_new_map,
+                            new_n,
+                        )
+                        .unwrap()
                     })
                     .unzip()
             }
@@ -129,8 +136,12 @@ mod tests {
             }
 
             // each existing party has to generate it's refresh message aware of the new parties
-            let (refresh_messages, dk_keys) =
-                generate_refresh_parties_replace(keys, &new_to_old_map, &old_to_new_map, join_messages.as_slice());
+            let (refresh_messages, dk_keys) = generate_refresh_parties_replace(
+                keys,
+                &new_to_old_map,
+                &old_to_new_map,
+                join_messages.as_slice(),
+            );
             // all existing parties rotate aware of the join_messages
             for i in 0..keys.len() as usize {
                 RefreshMessage::collect(
