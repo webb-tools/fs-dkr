@@ -189,9 +189,11 @@ impl<E: Curve, H: Digest + Clone> RefreshMessage<E, H> {
             .map(|k| refresh_messages[k].points_encrypted_vec[(party_index - 1) as usize].clone())
             .collect();
 
-        let indices: Vec<u16> = (0..(parameters.threshold + 1) as usize)
+        let mut indices: Vec<u16> = (0..(parameters.threshold + 1) as usize)
             .map(|i| refresh_messages[i].party_index - 1)
             .collect();
+
+        indices.sort();
 
         // optimization - one decryption
         let li_vec: Vec<_> = (0..parameters.threshold as usize + 1)
@@ -299,6 +301,7 @@ impl<E: Curve, H: Digest + Clone> RefreshMessage<E, H> {
         }
 
         key.i = *old_to_new_map.get(&key.i).unwrap();
+        key.n = new_n;
 
         RefreshMessage::distribute(key, new_n as u16)
     }

@@ -176,11 +176,11 @@ mod tests {
         keys.remove(1);
 
         let mut old_to_new_map: HashMap<u16, u16> = HashMap::new();
+        old_to_new_map.insert(1, 4);
         old_to_new_map.insert(3, 1);
         old_to_new_map.insert(4, 3);
-        old_to_new_map.insert(1, 4);
-        old_to_new_map.insert(6, 5);
         old_to_new_map.insert(5, 6);
+        old_to_new_map.insert(6, 5);
 
         // Simulate the replace
         simulate_replace(&mut keys, &[2, 7], &old_to_new_map, t, n).unwrap();
