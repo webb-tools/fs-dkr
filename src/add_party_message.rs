@@ -39,7 +39,6 @@ pub struct JoinMessage {
     pub(crate) composite_dlog_proof_base_h2: CompositeDLogProof,
 }
 
-
 /// Generates the parameters needed for the h1_h2_N_tilde_vec. These parameters can be seen as
 /// environment variables for each party that they agree on. In this case, each new party generates
 /// it's own DlogStatements and submits it's proofs

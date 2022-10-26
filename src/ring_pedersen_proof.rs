@@ -1,3 +1,4 @@
+use core::slice::SlicePattern;
 /*
     zk-paillier
     Copyright 2018 by Kzen Networks
@@ -11,15 +12,15 @@ use std::iter;
 use std::marker::PhantomData;
 use std::ops::Shl;
 
-use curv::elliptic::curves::Curve;
-use serde::{Deserialize, Serialize};
-use curv::cryptographic_primitives::hashing::Digest;
-use curv::{arithmetic::traits::*, elliptic::curves::Point};
-use curv::BigInt;
-use curv::cryptographic_primitives::hashing::DigestExt;
-use paillier::{DecryptionKey, EncryptionKey, Paillier, KeyGeneration};
-use zk_paillier::zkproofs::IncorrectProof;
 use bitvec::prelude::*;
+use curv::cryptographic_primitives::hashing::Digest;
+use curv::cryptographic_primitives::hashing::DigestExt;
+use curv::elliptic::curves::Curve;
+use curv::BigInt;
+use curv::{arithmetic::traits::*, elliptic::curves::Point};
+use paillier::{DecryptionKey, EncryptionKey, KeyGeneration, Paillier};
+use serde::{Deserialize, Serialize};
+use zk_paillier::zkproofs::IncorrectProof;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct RingPedersenStatement<E: Curve, H: Digest + Clone> {
@@ -39,7 +40,8 @@ pub struct RingPedersenWitness<E: Curve, H: Digest + Clone> {
 
 impl<E: Curve, H: Digest + Clone> RingPedersenStatement<E, H> {
     pub fn generate() -> (Self, RingPedersenWitness<E, H>) {
-        let (ek_tilde, dk_tilde) = Paillier::keypair_with_modulus_size(crate::PAILLIER_KEY_SIZE).keys();
+        let (ek_tilde, dk_tilde) =
+            Paillier::keypair_with_modulus_size(crate::PAILLIER_KEY_SIZE).keys();
         let one = BigInt::one();
         let phi = (&dk_tilde.p - &one) * (&dk_tilde.q - &one);
         let r = BigInt::sample_below(&ek_tilde.n);
@@ -59,7 +61,7 @@ impl<E: Curve, H: Digest + Clone> RingPedersenStatement<E, H> {
                 p: dk_tilde.p,
                 q: dk_tilde.q,
                 lambda,
-                phantom: PhantomData
+                phantom: PhantomData,
             },
         )
     }
@@ -73,7 +75,10 @@ pub struct RingPedersenProof<E: Curve, H: Digest + Clone> {
 
 // Link to the UC non-interactive threshold ECDSA paper
 impl<E: Curve, H: Digest + Clone> RingPedersenProof<E, H> {
-    pub fn prove(witness: &RingPedersenWitness<E, H>, statement: &RingPedersenStatement<E, H>) -> RingPedersenProof<E, H> {
+    pub fn prove(
+        witness: &RingPedersenWitness<E, H>,
+        statement: &RingPedersenStatement<E, H>,
+    ) -> RingPedersenProof<E, H> {
         // 1. Sample alphas from 1 -> m from \phi(N)
         let a = [(); crate::M_SECURITY].map(|_| BigInt::zero());
         let A = [(); crate::M_SECURITY].map(|_| BigInt::zero());
@@ -88,11 +93,15 @@ impl<E: Curve, H: Digest + Clone> RingPedersenProof<E, H> {
         }
 
         let e: BigInt = hash.result_bigint();
-        let bitwise_e: BitVec = BitVec::from(e.to_bytes().to_vec());
+        let bitwise_e: BitVec<u8, Lsb0> = BitVec::from_vec(e.to_bytes());
 
         let Z = [(); crate::M_SECURITY].map(|_| BigInt::zero());
         for i in 0..crate::M_SECURITY {
-            let e_i = if bitwise_e[i] { BigInt::one() } else { BigInt::zero() };
+            let e_i = if bitwise_e[i] {
+                BigInt::one()
+            } else {
+                BigInt::zero()
+            };
             let z_i = BigInt::mod_add(&a[i], &(e_i * witness.lambda), &statement.phi);
             Z[i] = z_i;
         }
@@ -110,5 +119,4 @@ impl<E: Curve, H: Digest + Clone> RingPedersenProof<E, H> {
 }
 
 #[cfg(test)]
-mod tests {
-}
+mod tests {}
