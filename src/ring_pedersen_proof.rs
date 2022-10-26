@@ -136,4 +136,15 @@ impl<E: Curve, H: Digest + Clone> RingPedersenProof<E, H> {
 }
 
 #[cfg(test)]
-mod tests {}
+mod tests {
+    use super::*;
+    use curv::elliptic::curves::secp256_k1::Secp256k1;
+    use sha2::Sha256;
+
+    #[test]
+    fn test_ring_pedersen() {
+        let (statement, witness) = RingPedersenStatement::<Secp256k1, Sha256>::generate();
+        let proof = RingPedersenProof::<Secp256k1, Sha256>::prove(&witness, &statement);
+        assert!(RingPedersenProof::<Secp256k1, Sha256>::verify(&proof, &statement).is_ok());
+    }
+}
