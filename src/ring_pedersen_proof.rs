@@ -93,7 +93,7 @@ impl<E: Curve, H: Digest + Clone> RingPedersenProof<E, H> {
             a[i] = a_i.clone();
             let A_i = BigInt::mod_pow(&statement.T, &a_i, &statement.N);
             A[i] = A_i.clone();
-            hash.chain_bigint(&A_i);
+            hash = H::chain_bigint(hash, &A_i);
         }
 
         let e: BigInt = hash.result_bigint();
