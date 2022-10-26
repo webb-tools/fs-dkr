@@ -1,4 +1,3 @@
-use core::slice::SlicePattern;
 /*
     zk-paillier
     Copyright 2018 by Kzen Networks
@@ -21,6 +20,9 @@ use curv::{arithmetic::traits::*, elliptic::curves::Point};
 use paillier::{DecryptionKey, EncryptionKey, KeyGeneration, Paillier};
 use serde::{Deserialize, Serialize};
 use zk_paillier::zkproofs::IncorrectProof;
+
+use crate::error::FsDkrError;
+use crate::error::FsDkrResult;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct RingPedersenStatement<E: Curve, H: Digest + Clone> {
@@ -70,6 +72,7 @@ impl<E: Curve, H: Digest + Clone> RingPedersenStatement<E, H> {
 pub struct RingPedersenProof<E: Curve, H: Digest + Clone> {
     A: [BigInt; crate::M_SECURITY],
     Z: [BigInt; crate::M_SECURITY],
+    bitwise_e: BitVec<u8, Lsb0>,
     phantom: PhantomData<(E, H)>,
 }
 
@@ -80,40 +83,53 @@ impl<E: Curve, H: Digest + Clone> RingPedersenProof<E, H> {
         statement: &RingPedersenStatement<E, H>,
     ) -> RingPedersenProof<E, H> {
         // 1. Sample alphas from 1 -> m from \phi(N)
-        let a = [(); crate::M_SECURITY].map(|_| BigInt::zero());
-        let A = [(); crate::M_SECURITY].map(|_| BigInt::zero());
-        let hash = H::new();
+        let mut a = [(); crate::M_SECURITY].map(|_| BigInt::zero());
+        let mut A = [(); crate::M_SECURITY].map(|_| BigInt::zero());
+        let mut hash = H::new();
         for i in 0..crate::M_SECURITY {
             // TODO: Consider ensuring we get a unit element of this subgroup
             let a_i = BigInt::sample_below(&statement.phi);
-            a[i] = a_i;
+            a[i] = a_i.clone();
             let A_i = BigInt::mod_pow(&statement.T, &a_i, &statement.N);
-            A[i] = A_i;
+            A[i] = A_i.clone();
             hash.chain_bigint(&A_i);
         }
 
         let e: BigInt = hash.result_bigint();
         let bitwise_e: BitVec<u8, Lsb0> = BitVec::from_vec(e.to_bytes());
 
-        let Z = [(); crate::M_SECURITY].map(|_| BigInt::zero());
+        let mut Z = [(); crate::M_SECURITY].map(|_| BigInt::zero());
         for i in 0..crate::M_SECURITY {
             let e_i = if bitwise_e[i] {
                 BigInt::one()
             } else {
                 BigInt::zero()
             };
-            let z_i = BigInt::mod_add(&a[i], &(e_i * witness.lambda), &statement.phi);
+            let z_i = BigInt::mod_add(&a[i], &(e_i * &witness.lambda), &statement.phi);
             Z[i] = z_i;
         }
 
         Self {
             A,
             Z,
+            bitwise_e,
             phantom: PhantomData,
         }
     }
 
-    pub fn verify(&self, ek: &EncryptionKey, salt_str: &[u8]) -> Result<(), IncorrectProof> {
+    pub fn verify(proof: &RingPedersenProof<E, H>, statement: &RingPedersenStatement<E, H>) -> FsDkrResult<()>{
+        for i in 0..crate::M_SECURITY {
+            let mut e_i = 0;
+            if proof.bitwise_e[i] {
+                e_i = 1;
+            }
+
+            if BigInt::mod_pow(&statement.T, &proof.Z[i], &statement.N) == BigInt::mod_mul(&proof.A[i], &BigInt::mod_pow(&statement.S, &BigInt::from(e_i), &statement.N), &statement.N) {
+                continue;
+            } else {
+                return Err(FsDkrError::RingPedersenProofError);
+            }
+        }
         Ok(())
     }
 }
