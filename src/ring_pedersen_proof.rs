@@ -21,6 +21,8 @@ use paillier::{DecryptionKey, EncryptionKey, Paillier, KeyGeneration};
 use zk_paillier::zkproofs::IncorrectProof;
 use bitvec::prelude::*;
 
+use crate::error::FsDkrResult;
+
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct RingPedersenStatement<E: Curve, H: Digest + Clone> {
     S: BigInt,
@@ -68,6 +70,7 @@ impl<E: Curve, H: Digest + Clone> RingPedersenStatement<E, H> {
 pub struct RingPedersenProof<E: Curve, H: Digest + Clone> {
     A: [BigInt; crate::M_SECURITY],
     Z: [BigInt; crate::M_SECURITY],
+    bitwise_e: BitVec,
     phantom: PhantomData<(E, H)>,
 }
 
@@ -88,7 +91,7 @@ impl<E: Curve, H: Digest + Clone> RingPedersenProof<E, H> {
         }
 
         let e: BigInt = hash.result_bigint();
-        let bitwise_e: BitVec = BitVec::from(e.to_bytes().to_vec());
+        let bitwise_e: BitVec = BitVec::from(e.to_bytes().as_bits());
 
         let Z = [(); crate::M_SECURITY].map(|_| BigInt::zero());
         for i in 0..crate::M_SECURITY {
@@ -100,11 +103,22 @@ impl<E: Curve, H: Digest + Clone> RingPedersenProof<E, H> {
         Self {
             A,
             Z,
+            bitwise_e,
             phantom: PhantomData,
         }
     }
 
-    pub fn verify(&self, ek: &EncryptionKey, salt_str: &[u8]) -> Result<(), IncorrectProof> {
+    pub fn verify(proof: &RingPedersenProof<E, H>, statement: &RingPedersenStatement<E, H>) -> FsDkrResult<()>{
+        for i in 0..crate::M_SECURITY {
+            let mut e_i = 0;
+            if proof.bitwise_e[i] {
+                e_i = 1;
+            }
+
+            if BigInt::mod_pow(&statement.T, &proof.Z[i], &statement.N) == BigInt::mod_mul(&proof.A[i], &BigInt::mod_pow(&statement.S, e_i, &statement.N), &statement.N) {
+                
+            }
+        }
         Ok(())
     }
 }
