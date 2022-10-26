@@ -25,6 +25,7 @@ pub struct RingPedersenProof {
 
 impl RingPedersenProof {
     pub fn proof(dk: &DecryptionKey, salt_str: Option<&'static [u8]>) -> RingPedersenProof {
+        
     }
 
     pub fn verify(&self, ek: &EncryptionKey, salt_str: &[u8]) -> Result<(), IncorrectProof> {
