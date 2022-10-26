@@ -24,7 +24,6 @@ use zk_paillier::zkproofs::IncorrectProof;
 use crate::error::FsDkrError;
 use crate::error::FsDkrResult;
 
-
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct RingPedersenStatement<E: Curve, H: Digest + Clone> {
     S: BigInt,
@@ -70,9 +69,10 @@ impl<E: Curve, H: Digest + Clone> RingPedersenStatement<E, H> {
     }
 }
 
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct RingPedersenProof<E: Curve, H: Digest + Clone> {
-    A: [BigInt; crate::M_SECURITY],
-    Z: [BigInt; crate::M_SECURITY],
+    A: Vec<BigInt>,
+    Z: Vec<BigInt>,
     phantom: PhantomData<(E, H)>,
 }
 
@@ -110,13 +110,16 @@ impl<E: Curve, H: Digest + Clone> RingPedersenProof<E, H> {
         }
 
         Self {
-            A,
-            Z,
+            A: A.to_vec(),
+            Z: Z.to_vec(),
             phantom: PhantomData,
         }
     }
 
-    pub fn verify(proof: &RingPedersenProof<E, H>, statement: &RingPedersenStatement<E, H>) -> FsDkrResult<()>{
+    pub fn verify(
+        proof: &RingPedersenProof<E, H>,
+        statement: &RingPedersenStatement<E, H>,
+    ) -> FsDkrResult<()> {
         let mut hash = H::new();
         for i in 0..crate::M_SECURITY {
             hash = H::chain_bigint(hash, &proof.A[i]);
@@ -131,7 +134,13 @@ impl<E: Curve, H: Digest + Clone> RingPedersenProof<E, H> {
                 e_i = 1;
             }
 
-            if BigInt::mod_pow(&statement.T, &proof.Z[i], &statement.N) == BigInt::mod_mul(&proof.A[i], &BigInt::mod_pow(&statement.S, &BigInt::from(e_i), &statement.N), &statement.N) {
+            if BigInt::mod_pow(&statement.T, &proof.Z[i], &statement.N)
+                == BigInt::mod_mul(
+                    &proof.A[i],
+                    &BigInt::mod_pow(&statement.S, &BigInt::from(e_i), &statement.N),
+                    &statement.N,
+                )
+            {
                 continue;
             } else {
                 return Err(FsDkrError::RingPedersenProofError);

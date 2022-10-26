@@ -23,6 +23,8 @@ use std::fmt::Debug;
 use zeroize::Zeroize;
 use zk_paillier::zkproofs::{DLogStatement, NiCorrectKeyProof, SALT_STRING};
 
+use crate::ring_pedersen_proof::{RingPedersenProof, RingPedersenStatement};
+
 // Everything here can be broadcasted
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct RefreshMessage<E: Curve, H: Digest + Clone> {
@@ -38,6 +40,8 @@ pub struct RefreshMessage<E: Curve, H: Digest + Clone> {
     pub(crate) ek: EncryptionKey,
     pub(crate) remove_party_indices: Vec<u16>,
     pub(crate) public_key: Point<E>,
+    pub(crate) ring_pedersen_statement: RingPedersenStatement<E, H>,
+    pub(crate) ring_pedersen_proof: RingPedersenProof<E, H>,
     #[serde(skip)]
     pub hash_choice: HashChoice<H>,
 }
@@ -113,6 +117,10 @@ impl<E: Curve, H: Digest + Clone> RefreshMessage<E, H> {
         let (ek, dk) = Paillier::keypair_with_modulus_size(crate::PAILLIER_KEY_SIZE).keys();
         let dk_correctness_proof = NiCorrectKeyProof::proof(&dk, None);
 
+        let (ring_pedersen_statement, ring_pedersen_witness) = RingPedersenStatement::generate();
+
+        let ring_pedersen_proof =
+            RingPedersenProof::prove(&ring_pedersen_witness, &ring_pedersen_statement);
         Ok((
             RefreshMessage {
                 old_party_index,
@@ -127,6 +135,8 @@ impl<E: Curve, H: Digest + Clone> RefreshMessage<E, H> {
                 ek,
                 remove_party_indices: Vec::new(),
                 public_key: local_key.y_sum_s.clone(),
+                ring_pedersen_statement,
+                ring_pedersen_proof,
                 hash_choice: HashChoice::new(),
             },
             dk,
@@ -226,7 +236,7 @@ impl<E: Curve, H: Digest + Clone> RefreshMessage<E, H> {
     }
 
     pub fn replace(
-        new_parties: &[JoinMessage],
+        new_parties: &[JoinMessage<E, H>],
         key: &mut LocalKey<E>,
         old_to_new_map: &HashMap<u16, u16>,
         new_n: u16,
@@ -311,7 +321,7 @@ impl<E: Curve, H: Digest + Clone> RefreshMessage<E, H> {
         refresh_messages: &[Self],
         mut local_key: &mut LocalKey<E>,
         new_dk: DecryptionKey,
-        join_messages: &[JoinMessage],
+        join_messages: &[JoinMessage<E, H>],
     ) -> FsDkrResult<()> {
         let new_n = refresh_messages.len() + join_messages.len();
         RefreshMessage::validate_collect(refresh_messages, local_key.t, new_n as u16)?;
@@ -336,6 +346,21 @@ impl<E: Curve, H: Digest + Clone> RefreshMessage<E, H> {
                     return Err(FsDkrError::RangeProof { party_index: i });
                 }
             }
+        }
+
+        // Verify ring-pedersen parameters
+        for refresh_message in refresh_messages.iter() {
+            RingPedersenProof::verify(
+                &refresh_message.ring_pedersen_proof,
+                &refresh_message.ring_pedersen_statement,
+            );
+        }
+
+        for join_message in join_messages.iter() {
+            RingPedersenProof::verify(
+                &join_message.ring_pedersen_proof,
+                &join_message.ring_pedersen_statement,
+            );
         }
 
         let old_ek = local_key.paillier_key_vec[(local_key.i - 1) as usize].clone();
