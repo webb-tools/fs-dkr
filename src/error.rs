@@ -30,6 +30,9 @@ pub enum FsDkrError {
         is_u3_eq: bool,
     },
 
+    #[error("Ring Pedersen Proof Failed")]
+    RingPedersenProofError,
+
     #[error("Range Proof failed for party: {party_index:?}")]
     RangeProof { party_index: usize },
 
