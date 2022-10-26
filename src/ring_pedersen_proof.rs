@@ -73,7 +73,6 @@ impl<E: Curve, H: Digest + Clone> RingPedersenStatement<E, H> {
 pub struct RingPedersenProof<E: Curve, H: Digest + Clone> {
     A: [BigInt; crate::M_SECURITY],
     Z: [BigInt; crate::M_SECURITY],
-    bitwise_e: BitVec<u8, Lsb0>,
     phantom: PhantomData<(E, H)>,
 }
 
@@ -113,15 +112,22 @@ impl<E: Curve, H: Digest + Clone> RingPedersenProof<E, H> {
         Self {
             A,
             Z,
-            bitwise_e,
             phantom: PhantomData,
         }
     }
 
     pub fn verify(proof: &RingPedersenProof<E, H>, statement: &RingPedersenStatement<E, H>) -> FsDkrResult<()>{
+        let mut hash = H::new();
+        for i in 0..crate::M_SECURITY {
+            hash = H::chain_bigint(hash, &proof.A[i]);
+        }
+
+        let e: BigInt = hash.result_bigint();
+        let bitwise_e: BitVec<u8, Lsb0> = BitVec::from_vec(e.to_bytes());
+
         for i in 0..crate::M_SECURITY {
             let mut e_i = 0;
-            if proof.bitwise_e[i] {
+            if bitwise_e[i] {
                 e_i = 1;
             }
 
