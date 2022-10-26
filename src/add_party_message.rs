@@ -39,14 +39,6 @@ pub struct JoinMessage {
     pub(crate) composite_dlog_proof_base_h2: CompositeDLogProof,
 }
 
-fn generate pedersen_parameters() -> () {
-    let (ek_tilde, dk_tilde) = Paillier::keypair_with_modulus_size(crate::PAILLIER_KEY_SIZE).keys();
-    let one = BigInt::one();
-    let phi = (&dk_tilde.p - &one) * (&dk_tilde.q - &one);
-    let s = BigInt::sample_below(&ek_tilde.n);
-    let t = BigInt::mod_pow(&h1, &xhi, &ek_tilde.n);
-    ()
-}
 
 /// Generates the parameters needed for the h1_h2_N_tilde_vec. These parameters can be seen as
 /// environment variables for each party that they agree on. In this case, each new party generates
