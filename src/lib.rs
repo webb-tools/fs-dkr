@@ -23,5 +23,5 @@ pub mod zk_pdl_with_slack;
 
 mod test;
 
-pub(crate) const PAILLIER_KEY_SIZE: usize = 2048;
-pub(crate) const M_SECURITY: usize = 256;
+pub const PAILLIER_KEY_SIZE: usize = 2048;
+pub const M_SECURITY: usize = 256;
