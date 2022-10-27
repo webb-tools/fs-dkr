@@ -6,7 +6,7 @@ mod tests {
         ShamirSecretSharing, VerifiableSS,
     };
     use curv::elliptic::curves::secp256_k1::Secp256k1Point;
-    use curv::elliptic::curves::{Curve, Secp256k1};
+    use curv::elliptic::curves::Secp256k1;
     use curv::BigInt;
     use multi_party_ecdsa::protocols::multi_party_ecdsa::gg_2020::party_i::verify;
     use multi_party_ecdsa::protocols::multi_party_ecdsa::gg_2020::party_i::Keys;

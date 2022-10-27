@@ -3,7 +3,7 @@ use crate::error::{FsDkrError, FsDkrResult};
 use crate::range_proofs::AliceProof;
 use crate::zk_pdl_with_slack::{PDLwSlackProof, PDLwSlackStatement, PDLwSlackWitness};
 use curv::arithmetic::{BitManipulation, Samplable, Zero};
-use curv::cryptographic_primitives::hashing::{Digest, DigestExt};
+use curv::cryptographic_primitives::hashing::Digest;
 use curv::cryptographic_primitives::secret_sharing::feldman_vss::{
     ShamirSecretSharing, VerifiableSS,
 };
@@ -353,14 +353,14 @@ impl<E: Curve, H: Digest + Clone> RefreshMessage<E, H> {
             RingPedersenProof::verify(
                 &refresh_message.ring_pedersen_proof,
                 &refresh_message.ring_pedersen_statement,
-            );
+            )?;
         }
 
         for join_message in join_messages.iter() {
             RingPedersenProof::verify(
                 &join_message.ring_pedersen_proof,
                 &join_message.ring_pedersen_statement,
-            );
+            )?;
         }
 
         let old_ek = local_key.paillier_key_vec[(local_key.i - 1) as usize].clone();

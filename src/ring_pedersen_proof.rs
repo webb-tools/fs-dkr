@@ -1,25 +1,25 @@
+#![allow(non_snake_case)]
+
 /*
-    zk-paillier
-    Copyright 2018 by Kzen Networks
-    zk-paillier is free software: you can redistribute
+    Ring Pedersen Proof
+    Copyright 2022 by Webb Technologies.
+
+    ring_pedersen_proof.rs is free software: you can redistribute
     it and/or modify it under the terms of the GNU General Public
     License as published by the Free Software Foundation, either
     version 3 of the License, or (at your option) any later version.
     @license GPL-3.0+ <https://github.com/KZen-networks/zk-paillier/blob/master/LICENSE>
 */
-use std::iter;
-use std::marker::PhantomData;
-use std::ops::Shl;
 
 use bitvec::prelude::*;
+use curv::arithmetic::traits::*;
 use curv::cryptographic_primitives::hashing::Digest;
 use curv::cryptographic_primitives::hashing::DigestExt;
 use curv::elliptic::curves::Curve;
 use curv::BigInt;
-use curv::{arithmetic::traits::*, elliptic::curves::Point};
-use paillier::{DecryptionKey, EncryptionKey, KeyGeneration, Paillier};
+use paillier::{KeyGeneration, Paillier};
 use serde::{Deserialize, Serialize};
-use zk_paillier::zkproofs::IncorrectProof;
+use std::marker::PhantomData;
 
 use crate::error::FsDkrError;
 use crate::error::FsDkrResult;

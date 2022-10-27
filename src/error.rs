@@ -37,7 +37,7 @@ pub enum FsDkrError {
     RangeProof { party_index: usize },
 
     #[error("The Paillier moduli size of party: {party_index:?} is {moduli_size:?} bits, when it should be 2047-2048 bits")]
-    MouliTooSmall {
+    ModuliTooSmall {
         party_index: u16,
         moduli_size: usize,
     },
@@ -53,4 +53,7 @@ pub enum FsDkrError {
 
     #[error("DLog proof failed for party {party_index:?}")]
     DLogProofValidation { party_index: u16 },
+
+    #[error("Ring pedersen proof failed for party {party_index:?}")]
+    RingPedersenProofValidation { party_index: u16 },
 }

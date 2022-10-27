@@ -13,7 +13,7 @@
 use crate::error::{FsDkrError, FsDkrResult};
 use crate::refresh_message::RefreshMessage;
 use curv::arithmetic::{BasicOps, Modulo, One, Samplable, Zero};
-use curv::cryptographic_primitives::hashing::{Digest, DigestExt};
+use curv::cryptographic_primitives::hashing::Digest;
 use curv::cryptographic_primitives::secret_sharing::feldman_vss::{
     ShamirSecretSharing, VerifiableSS,
 };
@@ -146,14 +146,24 @@ impl<E: Curve, H: Digest + Clone> JoinMessage<E, H> {
             RingPedersenProof::verify(
                 &refresh_message.ring_pedersen_proof,
                 &refresh_message.ring_pedersen_statement,
-            );
+            )
+            .map_err(|e| FsDkrError::RingPedersenProofValidation {
+                party_index: refresh_message.party_index,
+            })?;
         }
 
         for join_message in join_messages.iter() {
             RingPedersenProof::verify(
                 &join_message.ring_pedersen_proof,
                 &join_message.ring_pedersen_statement,
-            );
+            )
+            .map_err(|e| {
+                if let Some(party_index) = join_message.party_index {
+                    FsDkrError::RingPedersenProofValidation { party_index }
+                } else {
+                    e
+                }
+            })?;
         }
 
         // check if a party_index has been assigned to the current party
