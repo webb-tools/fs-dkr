@@ -383,7 +383,7 @@ impl<E: Curve, H: Digest + Clone> RefreshMessage<E, H> {
             }
             let n_length = refresh_message.ek.n.bit_length();
             if n_length > crate::PAILLIER_KEY_SIZE || n_length < crate::PAILLIER_KEY_SIZE - 1 {
-                return Err(FsDkrError::MouliTooSmall {
+                return Err(FsDkrError::ModuliTooSmall {
                     party_index: refresh_message.party_index,
                     moduli_size: n_length,
                 });
@@ -425,7 +425,7 @@ impl<E: Curve, H: Digest + Clone> RefreshMessage<E, H> {
 
             let n_length = join_message.ek.n.bit_length();
             if n_length > crate::PAILLIER_KEY_SIZE || n_length < crate::PAILLIER_KEY_SIZE - 1 {
-                return Err(FsDkrError::MouliTooSmall {
+                return Err(FsDkrError::ModuliTooSmall {
                     party_index: join_message.get_party_index()?,
                     moduli_size: n_length,
                 });
