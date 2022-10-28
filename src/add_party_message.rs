@@ -147,7 +147,7 @@ impl<E: Curve, H: Digest + Clone, const M: usize> JoinMessage<E, H, M> {
                 &refresh_message.ring_pedersen_proof,
                 &refresh_message.ring_pedersen_statement,
             )
-            .map_err(|e| FsDkrError::RingPedersenProofValidation {
+            .map_err(|_e| FsDkrError::RingPedersenProofValidation {
                 party_index: refresh_message.party_index,
             })?;
         }
@@ -285,8 +285,8 @@ impl<E: Curve, H: Digest + Clone, const M: usize> JoinMessage<E, H, M> {
             h1_h2_n_tilde_vec: h1_h2_ntilde_vec,
             vss_scheme,
             i: party_index,
-            t: t,
-            n: n,
+            t,
+            n,
         };
 
         Ok(local_key)

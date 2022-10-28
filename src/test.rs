@@ -132,7 +132,7 @@ mod tests {
 
             // each existing party has to generate it's refresh message aware of the new parties
             let (refresh_messages, dk_keys) =
-                generate_refresh_parties_replace(keys, &old_to_new_map, join_messages.as_slice());
+                generate_refresh_parties_replace(keys, old_to_new_map, join_messages.as_slice());
             let mut new_keys_vec: Vec<(u16, LocalKey<Secp256k1>)> =
                 Vec::with_capacity(keys.len() + join_messages.len());
             // all existing parties rotate aware of the join_messages
@@ -250,12 +250,11 @@ mod tests {
         }
 
         for refresh_message in refresh_messages.iter_mut() {
-            if !remove_party_indices.contains(&refresh_message.party_index.into()) {
+            if !remove_party_indices.contains(&refresh_message.party_index) {
                 refresh_message.remove_party_indices = remove_party_indices.clone();
             } else {
                 let mut new_remove_party_indices = remove_party_indices.clone();
-                new_remove_party_indices
-                    .retain(|value| *value != refresh_message.party_index.into());
+                new_remove_party_indices.retain(|value| *value != refresh_message.party_index);
                 refresh_message.remove_party_indices = new_remove_party_indices;
             }
 
@@ -370,7 +369,7 @@ mod tests {
             .into_iter()
             .enumerate()
             .map(|(i, p)| p.complete(&local_sigs_except(i)).unwrap())
-            .all(|signature| verify(&signature, &pk, &message).is_ok()));
+            .all(|signature| verify(&signature, pk, &message).is_ok()));
     }
 
     fn create_hash(big_ints: &[&BigInt]) -> BigInt {

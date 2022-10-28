@@ -55,7 +55,7 @@ impl AliceZkpRound1 {
         let beta = BigInt::from_paillier_key(alice_ek);
         let gamma = BigInt::sample_below(&(q.pow(3) * N_tilde));
         let ro = BigInt::sample_below(&(q * N_tilde));
-        let z = (BigInt::mod_pow(h1, &a, N_tilde) * BigInt::mod_pow(h2, &ro, N_tilde)) % N_tilde;
+        let z = (BigInt::mod_pow(h1, a, N_tilde) * BigInt::mod_pow(h2, &ro, N_tilde)) % N_tilde;
         let u = ((alpha.borrow() * &alice_ek.n + 1)
             * BigInt::mod_pow(&beta, &alice_ek.n, &alice_ek.nn))
             % &alice_ek.nn;
@@ -89,7 +89,7 @@ impl AliceZkpRound2 {
         r: &BigInt,
     ) -> Self {
         Self {
-            s: (BigInt::mod_pow(r, &e, &alice_ek.n) * round1.beta.borrow()) % &alice_ek.n,
+            s: (BigInt::mod_pow(r, e, &alice_ek.n) * round1.beta.borrow()) % &alice_ek.n,
             s1: (e * a) + round1.alpha.borrow(),
             s2: (e * round1.ro.borrow()) + round1.gamma.borrow(),
         }
@@ -139,7 +139,7 @@ impl<E: Curve, H: Digest + Clone> AliceProof<E, H> {
             % N_tilde;
 
         let gs1 = (self.s1.borrow() * N + 1) % NN;
-        let cipher_e_inv = BigInt::mod_inv(&BigInt::mod_pow(&cipher, &self.e, NN), NN);
+        let cipher_e_inv = BigInt::mod_inv(&BigInt::mod_pow(cipher, &self.e, NN), NN);
         let cipher_e_inv = match cipher_e_inv {
             None => return false,
             Some(c) => c,
@@ -148,7 +148,7 @@ impl<E: Curve, H: Digest + Clone> AliceProof<E, H> {
         let u = (gs1 * BigInt::mod_pow(&self.s, N, NN) * cipher_e_inv) % NN;
 
         let e = H::new()
-            .chain_bigint(&N)
+            .chain_bigint(N)
             .chain_bigint(&Gen)
             .chain_bigint(cipher)
             .chain_bigint(&self.z)
@@ -177,7 +177,7 @@ impl<E: Curve, H: Digest + Clone> AliceProof<E, H> {
             q.bit_length() <= 256,
             "We use SHA256 so we don't currently support moduli bigger than 256"
         );
-        let round1 = AliceZkpRound1::from(alice_ek, dlog_statement, a, &q);
+        let round1 = AliceZkpRound1::from(alice_ek, dlog_statement, a, q);
 
         let Gen = alice_ek.n.borrow() + 1;
         let e = H::new()
@@ -342,7 +342,7 @@ pub struct BobCheck<E: Curve = Secp256k1> {
 }
 
 /// Bob's regular proof
-#[derive(Clone, PartialEq, Debug, Serialize, Deserialize)]
+#[derive(Clone, PartialEq, Eq, Debug, Serialize, Deserialize)]
 pub struct BobProof<E: Curve, H: Digest + Clone> {
     t: BigInt,
     z: BigInt,
@@ -461,7 +461,7 @@ impl<E: Curve, H: Digest + Clone> BobProof<E, H> {
             b,
             beta_prim,
             a_encrypted,
-            &Scalar::<E>::group_order(),
+            Scalar::<E>::group_order(),
         );
 
         let Gen = alice_ek.n.borrow() + 1;
@@ -480,7 +480,7 @@ impl<E: Curve, H: Digest + Clone> BobProof<E, H> {
             let (X, u) = {
                 let ec_gen: Point<E> = Point::<E>::generator().to_point();
                 let alpha: Scalar<E> = Scalar::<E>::from(&round1.alpha);
-                (ec_gen.clone() * b.clone(), ec_gen.clone() * alpha)
+                (ec_gen.clone() * b.clone(), ec_gen * alpha)
             };
             check_u = Some(u.clone());
             let X_x_coor = X.x_coord().unwrap();
@@ -705,7 +705,7 @@ pub(crate) mod tests {
 
                 let (bob_proof, _) = BobProof::<Secp256k1, Sha256>::generate(
                     &encrypted_a,
-                    &mta_out.0.clone().into_owned(),
+                    &mta_out.0.clone(),
                     &b,
                     &beta_prim,
                     alice_public_key,
@@ -715,7 +715,7 @@ pub(crate) mod tests {
                 );
                 assert!(bob_proof.verify(
                     &encrypted_a,
-                    &mta_out.0.clone().into_owned(),
+                    &mta_out.0.clone(),
                     alice_public_key,
                     &dlog_statement,
                     None
@@ -726,7 +726,7 @@ pub(crate) mod tests {
                 let X = ec_gen * b.clone();
                 let bob_proof = BobProofExt::<Secp256k1, Sha256>::generate(
                     &encrypted_a,
-                    &mta_out.0.clone().into_owned(),
+                    &mta_out.0.clone(),
                     &b,
                     &beta_prim,
                     alice_public_key,
@@ -735,7 +735,7 @@ pub(crate) mod tests {
                 );
                 assert!(bob_proof.verify(
                     &encrypted_a,
-                    &mta_out.0.clone().into_owned(),
+                    &mta_out.0.clone(),
                     alice_public_key,
                     &dlog_statement,
                     &X

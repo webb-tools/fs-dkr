@@ -173,17 +173,17 @@ pub fn commitment_unknown_order(
     x: &BigInt,
     r: &BigInt,
 ) -> BigInt {
-    let h1_x = BigInt::mod_pow(h1, &x, &N_tilde);
+    let h1_x = BigInt::mod_pow(h1, x, N_tilde);
     let h2_r = {
         if r < &BigInt::zero() {
-            let h2_inv = BigInt::mod_inv(h2, &N_tilde).unwrap();
-            BigInt::mod_pow(&h2_inv, &(-r), &N_tilde)
+            let h2_inv = BigInt::mod_inv(h2, N_tilde).unwrap();
+            BigInt::mod_pow(&h2_inv, &(-r), N_tilde)
         } else {
-            BigInt::mod_pow(h2, &r, &N_tilde)
+            BigInt::mod_pow(h2, r, N_tilde)
         }
     };
-    let com = BigInt::mod_mul(&h1_x, &h2_r, &N_tilde);
-    com
+
+    BigInt::mod_mul(&h1_x, &h2_r, N_tilde)
 }
 
 #[cfg(test)]
@@ -211,7 +211,7 @@ mod test {
         let one = BigInt::one();
         let phi = (&dk_tilde.p - &one) * (&dk_tilde.q - &one);
         let h1 = BigInt::sample_below(&phi);
-        let S = BigInt::from(2).pow(256 as u32);
+        let S = BigInt::from(2).pow(256_u32);
         let xhi = BigInt::sample_below(&S);
         let h1_inv = BigInt::mod_inv(&h1, &ek_tilde.n).unwrap();
         let h2 = BigInt::mod_pow(&h1_inv, &xhi, &ek_tilde.n);
@@ -234,7 +234,7 @@ mod test {
 
         let c = Paillier::encrypt_with_chosen_randomness(
             &ek,
-            RawPlaintext::from(x.to_bigint().clone()),
+            RawPlaintext::from(x.to_bigint()),
             &randomness,
         )
         .0
@@ -275,7 +275,7 @@ mod test {
         let one = BigInt::one();
         let phi = (&dk_tilde.p - &one) * (&dk_tilde.q - &one);
         let h1 = BigInt::sample_below(&phi);
-        let S = BigInt::from(2).pow(256 as u32);
+        let S = BigInt::from(2).pow(256_u32);
         let xhi = BigInt::sample_below(&S);
         let h1_inv = BigInt::mod_inv(&h1, &ek_tilde.n).unwrap();
         let h2 = BigInt::mod_pow(&h1_inv, &xhi, &ek_tilde.n);
@@ -299,7 +299,7 @@ mod test {
         // here we encrypt x + 1 instead of x:
         let c = Paillier::encrypt_with_chosen_randomness(
             &ek,
-            RawPlaintext::from(x.to_bigint().clone() + BigInt::one()),
+            RawPlaintext::from(x.to_bigint() + BigInt::one()),
             &randomness,
         )
         .0

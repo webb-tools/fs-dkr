@@ -58,7 +58,7 @@ impl<E: Curve, H: Digest + Clone> RingPedersenStatement<E, H> {
                 S: s,
                 T: t,
                 N: ek_tilde.clone().n,
-                phi: phi,
+                phi,
                 ek: ek_tilde,
                 phantom: PhantomData,
             },

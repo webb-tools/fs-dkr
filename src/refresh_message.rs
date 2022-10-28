@@ -64,7 +64,7 @@ impl<E: Curve, H: Digest + Clone, const M: usize> RefreshMessage<E, H, M> {
 
         // commit to points on the polynomial
         let points_committed_vec: Vec<_> = (0..secret_shares.len())
-            .map(|i| Point::<E>::generator() * &secret_shares[i].clone().into())
+            .map(|i| Point::<E>::generator() * &secret_shares[i].clone())
             .collect();
 
         // encrypt points on the polynomial using Paillier keys
@@ -256,13 +256,13 @@ impl<E: Curve, H: Digest + Clone, const M: usize> RefreshMessage<E, H, M> {
                 .unwrap()
                 .clone();
             paillier_key_h1_h2_n_tilde_hash_map.insert(
-                old_to_new_map.get(old_party_index).unwrap().clone(),
+                *old_to_new_map.get(old_party_index).unwrap(),
                 (paillier_key, h1_h2_n_tilde),
             );
         }
 
         for new_party_index in paillier_key_h1_h2_n_tilde_hash_map.keys() {
-            if new_party_index.clone() <= current_len {
+            if *new_party_index <= current_len {
                 key.paillier_key_vec[(new_party_index - 1) as usize] =
                     paillier_key_h1_h2_n_tilde_hash_map
                         .get(new_party_index)
@@ -382,7 +382,7 @@ impl<E: Curve, H: Digest + Clone, const M: usize> RefreshMessage<E, H, M> {
                 });
             }
             let n_length = refresh_message.ek.n.bit_length();
-            if n_length > crate::PAILLIER_KEY_SIZE || n_length < crate::PAILLIER_KEY_SIZE - 1 {
+            if !(crate::PAILLIER_KEY_SIZE - 1..=crate::PAILLIER_KEY_SIZE).contains(&n_length) {
                 return Err(FsDkrError::ModuliTooSmall {
                     party_index: refresh_message.party_index,
                     moduli_size: n_length,
@@ -424,7 +424,7 @@ impl<E: Curve, H: Digest + Clone, const M: usize> RefreshMessage<E, H, M> {
             }
 
             let n_length = join_message.ek.n.bit_length();
-            if n_length > crate::PAILLIER_KEY_SIZE || n_length < crate::PAILLIER_KEY_SIZE - 1 {
+            if !(crate::PAILLIER_KEY_SIZE - 1..=crate::PAILLIER_KEY_SIZE).contains(&n_length) {
                 return Err(FsDkrError::ModuliTooSmall {
                     party_index: join_message.get_party_index()?,
                     moduli_size: n_length,
