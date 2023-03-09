@@ -35,4 +35,6 @@ thiserror = "1.0.26"
 sha2 = "0.9"
 
 [features]
-default = ["curv/rust-gmp-kzen"]
+default = ["rust-gmp-kzen"]
+rust-gmp-kzen = ["curv/rust-gmp-kzen"]
+num-bigint = ["curv/num-bigint"]
