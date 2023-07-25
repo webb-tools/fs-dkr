@@ -121,7 +121,7 @@ mod tests {
                 let new_n = (&keys.len() + join_messages.len()) as u16;
                 keys.iter_mut()
                     .map(|key| {
-                        RefreshMessage::replace(join_messages, key, old_to_new_map, new_n).unwrap()
+                        RefreshMessage::replace(join_messages, key, old_to_new_map, key.t, new_n).unwrap()
                     })
                     .unzip()
             }
@@ -148,6 +148,7 @@ mod tests {
                     &mut keys[i],
                     dk_keys[i].clone(),
                     join_messages.as_slice(),
+                    t,
                 )
                 .expect("");
                 new_keys_vec.push((keys[i].i - 1, keys[i].clone()));
@@ -162,6 +163,7 @@ mod tests {
                     join_messages.as_slice(),
                     t,
                     n,
+                    t,
                 )?;
 
                 new_keys_vec.push((party_index - 1, local_key));
@@ -247,7 +249,7 @@ mod tests {
         // TODO: Verify this is correct
         let new_n = keys.len() as u16;
         for key in keys.iter_mut() {
-            let (refresh_message, new_dk) = RefreshMessage::distribute(key.i, key, new_n).unwrap();
+            let (refresh_message, new_dk) = RefreshMessage::distribute(key.i, key, key.t, new_n).unwrap();
             refresh_messages.push(refresh_message.clone());
             new_dks.insert(refresh_message.party_index.into(), new_dk);
             party_key.insert(refresh_message.party_index.into(), key.clone());
@@ -293,16 +295,19 @@ mod tests {
                 key,
                 new_dks[party].clone(),
                 &[],
+                key.t
             )
             .expect("");
         }
 
         for remove_party_index in remove_party_indices {
+            let t = keys[remove_party_index as usize].t;
             let result = RefreshMessage::collect(
                 &broadcast_messages[&(remove_party_index as usize)],
                 &mut keys[remove_party_index as usize],
                 new_dks[&(remove_party_index as usize)].clone(),
                 &[],
+                t
             );
             assert!(result.is_err());
         }
@@ -319,14 +324,15 @@ mod tests {
         let keys_len = keys.len();
         for key in keys.iter_mut() {
             let (refresh_message, new_dk) =
-                RefreshMessage::distribute(key.i, key, keys_len as u16).unwrap();
+                RefreshMessage::distribute(key.i, key, key.t, keys_len as u16).unwrap();
             broadcast_vec.push(refresh_message);
             new_dks.push(new_dk);
         }
 
         // keys will be updated to refreshed values
         for i in 0..keys.len() as usize {
-            RefreshMessage::collect(&broadcast_vec, &mut keys[i], new_dks[i].clone(), &[])
+            let t = keys[i].t;
+            RefreshMessage::collect(&broadcast_vec, &mut keys[i], new_dks[i].clone(), &[], t)
                 .expect("");
         }
 
